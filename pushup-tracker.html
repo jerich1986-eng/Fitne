@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Push Up Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { background: #0d1a0d; color: #e8f5e8; font-family: 'Inter', 'Helvetica Neue', sans-serif; min-height: 100vh; }
+    #app { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* Header */
+    header { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 12px; border-bottom: 1px solid #1e3a1e; }
+    .logo { display: flex; align-items: center; gap: 10; }
+    .logo-icon { font-size: 22px; color: #4ade80; }
+    .logo-text { font-size: 13px; font-weight: 800; letter-spacing: 0.08em; line-height: 1.25; color: #e8f5e8; }
+    .logo-sub { color: #4ade80; font-size: 9px; letter-spacing: 0.18em; display: block; }
+    #fit-btn { padding: 6px 12px; border-radius: 20px; border: 1px solid #2e5a2e; background: transparent; color: #86efac; font-size: 11px; font-weight: 600; cursor: pointer; letter-spacing: 0.04em; white-space: nowrap; }
+    #fit-btn.connected { background: #14532d; border-color: #4ade80; color: #4ade80; }
+
+    /* Nav */
+    nav { display: flex; gap: 4px; padding: 10px 20px; border-bottom: 1px solid #1e3a1e; }
+    .nav-btn { flex: 1; padding: 8px 0; background: transparent; border: none; color: #4a7a4a; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px; }
+    .nav-btn.active { background: #1a3a1a; color: #4ade80; }
+
+    /* Views */
+    .view { display: none; flex: 1; padding: 24px 20px 40px; flex-direction: column; gap: 20px; }
+    .view.active { display: flex; }
+
+    /* Ring */
+    .ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .ring { width: 180px; height: 180px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 10px; background: conic-gradient(#1e2a1a 0deg, #1e2a1a 360deg); transition: background 0.3s; }
+    .ring-inner { width: 100%; height: 100%; border-radius: 50%; background: #0d1a0d; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .ring-count { font-size: 44px; font-weight: 900; color: #e8f5e8; line-height: 1; }
+    .ring-goal { font-size: 14px; color: #4a7a4a; font-weight: 600; }
+    .ring-done { font-size: 11px; color: #22c55e; font-weight: 700; letter-spacing: 0.12em; margin-top: 4px; display: none; }
+    .ring-caption { font-size: 13px; color: #4a7a4a; }
+
+    /* Input */
+    .input-row { display: flex; gap: 8px; }
+    #rep-input { flex: 1; padding: 14px 16px; background: #0f2010; border: 2px solid #1e3a1e; border-radius: 12px; color: #e8f5e8; font-size: 20px; font-weight: 700; outline: none; text-align: center; }
+    #rep-input:focus { border-color: #4ade80; }
+    #log-btn { padding: 14px 20px; background: #22c55e; border: none; border-radius: 12px; color: #0d1a0d; font-size: 14px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+    #log-btn:active { background: #16a34a; }
+
+    /* Quick add */
+    .quick-row { display: flex; gap: 8px; }
+    .quick-btn { flex: 1; padding: 10px 0; background: #0f2010; border: 1px solid #1e3a1e; border-radius: 10px; color: #86efac; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .quick-btn:active { background: #1a3a1a; }
+
+    /* Sets list */
+    .sets-box { background: #0f2010; border-radius: 12px; border: 1px solid #1e3a1e; overflow: hidden; }
+    .sets-title { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #4a7a4a; padding: 12px 16px 8px; text-transform: uppercase; }
+    .set-row { display: flex; align-items: center; padding: 9px 16px; border-top: 1px solid #1a2e1a; gap: 8px; }
+    .set-count { flex: 1; font-size: 14px; font-weight: 700; color: #e8f5e8; }
+    .set-time { font-size: 12px; color: #4a7a4a; }
+    .del-btn { background: none; border: none; color: #2e5a2e; font-size: 18px; cursor: pointer; padding: 0 4px; line-height: 1; }
+
+    /* Footer stats */
+    .footer-stats { display: flex; justify-content: space-around; margin-top: 8px; }
+    .footer-stat { font-size: 24px; font-weight: 900; color: #e8f5e8; text-align: center; }
+    .footer-label { font-size: 11px; font-weight: 500; color: #4a7a4a; }
+
+    /* History */
+    .hist-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+    .hist-cell { background: #1e2a1e; border-radius: 6px; padding: 6px 4px; text-align: center; }
+    .hist-cell.hit { background: #166534; }
+    .hist-cell.partial { background: #14532d; }
+    .hist-date { font-size: 9px; color: #4a7a4a; margin-bottom: 2px; }
+    .hist-val { font-size: 11px; font-weight: 700; color: #e8f5e8; }
+    .hist-legend { display: flex; align-items: center; font-size: 11px; color: #4a7a4a; margin-top: 4px; gap: 4px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+    /* Streak */
+    .streak-hero { text-align: center; padding: 20px 0 8px; }
+    .streak-num { font-size: 80px; font-weight: 900; color: #4ade80; line-height: 1; }
+    .streak-label { font-size: 16px; color: #4a7a4a; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-card { background: #0f2010; border: 1px solid #1e3a1e; border-radius: 12px; padding: 16px; text-align: center; }
+    .stat-val { font-size: 28px; font-weight: 900; color: #e8f5e8; }
+    .stat-unit { font-size: 11px; color: #4ade80; font-weight: 700; letter-spacing: 0.08em; }
+    .stat-label { font-size: 11px; color: #4a7a4a; margin-top: 2px; }
+    .fit-note { background: #0f2010; border: 1px solid #1e3a1e; border-radius: 10px; padding: 14px; font-size: 12px; color: #4a7a4a; line-height: 1.6; }
+
+    /* Toast */
+    #toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #166534; color: #e8f5e8; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; z-index: 999; white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,0.4); display: none; }
+    #toast.error { background: #7f1d1d; }
+    #toast.goal { background: #14532d; border: 1px solid #22c55e; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="toast"></div>
+
+  <header>
+    <div class="logo">
+      <span class="logo-icon">▲</span>
+      <span class="logo-text">PUSH UP<span class="logo-sub">THROUGH 2027</span></span>
+    </div>
+    <button id="fit-btn" onclick="initGoogleAuth()">Sync Google Fit</button>
+  </header>
+
+  <nav>
+    <button class="nav-btn active" onclick="setView('today')">Today</button>
+    <button class="nav-btn" onclick="setView('history')">History</button>
+    <button class="nav-btn" onclick="setView('streak')">Streak</button>
+  </nav>
+
+  <!-- TODAY -->
+  <div class="view active" id="view-today">
+    <div class="ring-wrap">
+      <div class="ring" id="ring">
+        <div class="ring-inner">
+          <div class="ring-count" id="ring-count">0</div>
+          <div class="ring-goal">/ 200</div>
+          <div class="ring-done" id="ring-done">DONE ✓</div>
+        </div>
+      </div>
+      <div class="ring-caption" id="ring-caption">200 to go · 0%</div>
+    </div>
+
+    <div class="input-row">
+      <input id="rep-input" type="number" min="1" max="500" placeholder="Reps" inputmode="numeric" />
+      <button id="log-btn" onclick="logSet()">Log Set</button>
+    </div>
+
+    <div class="quick-row">
+      <button class="quick-btn" onclick="setQuick(10)">+10</button>
+      <button class="quick-btn" onclick="setQuick(20)">+20</button>
+      <button class="quick-btn" onclick="setQuick(25)">+25</button>
+      <button class="quick-btn" onclick="setQuick(50)">+50</button>
+    </div>
+
+    <div class="sets-box" id="sets-box" style="display:none">
+      <div class="sets-title">Today's Sets</div>
+      <div id="sets-list"></div>
+    </div>
+
+    <div class="footer-stats">
+      <span class="footer-stat" id="days-remaining">–<span class="footer-label"> days left</span></span>
+      <span class="footer-stat" id="streak-footer">–<span class="footer-label"> day streak</span></span>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="view" id="view-history">
+    <div class="sets-title">Last 30 Days</div>
+    <div class="hist-grid" id="hist-grid"></div>
+    <div class="hist-legend">
+      <span class="legend-dot" style="background:#22c55e"></span> Goal hit
+      <span class="legend-dot" style="background:#86efac;margin-left:12px"></span> Partial
+      <span class="legend-dot" style="background:#1e2a1e;margin-left:12px"></span> Missed
+    </div>
+  </div>
+
+  <!-- STREAK -->
+  <div class="view" id="view-streak">
+    <div class="streak-hero">
+      <div class="streak-num" id="streak-big">0</div>
+      <div class="streak-label">day streak</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-val" id="stat-total">0</div><div class="stat-unit">reps</div><div class="stat-label">Total logged</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-days">0</div><div class="stat-unit">days</div><div class="stat-label">Days tracked</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-goals">0</div><div class="stat-unit">days</div><div class="stat-label">Goals hit</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-remain">–</div><div class="stat-unit">to 2028</div><div class="stat-label">Days remaining</div></div>
+    </div>
+    <div class="fit-note" id="fit-note">Tap 'Sync Google Fit' in the header to connect. Each logged set will sync automatically.</div>
+  </div>
+</div>
+
+<script>
+  const GOOGLE_CLIENT_ID = "91146277116-38fjlgnb2t6ctnqqusnreuf0pq8scjot.apps.googleusercontent.com";
+  const SCOPES = "https://www.googleapis.com/auth/fitness.activity.write https://www.googleapis.com/auth/fitness.activity.read";
+  const DAILY_GOAL = 200;
+  const GOAL_END = new Date("2027-12-31");
+  const STORAGE_KEY = "pushup_tracker_v2";
+
+  let gAuthToken = null;
+  let gStatus = "idle";
+
+  function getTodayKey() { return new Date().toISOString().slice(0, 10); }
+  function getDaysRemaining() { return Math.max(0, Math.ceil((GOAL_END - new Date()) / 86400000)); }
+  function loadData() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch { return {}; } }
+  function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+
+  let data = loadData();
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg, type = "success") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = type === "error" ? "error" : type === "goal" ? "goal" : "";
+    t.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.style.display = "none"; }, 2800);
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function render() {
+    const todayKey = getTodayKey();
+    const todaySets = data[todayKey] || [];
+    const todayTotal = todaySets.reduce((s, r) => s + r.count, 0);
+    const pct = Math.min(100, Math.round((todayTotal / DAILY_GOAL) * 100));
+    const remaining = Math.max(0, DAILY_GOAL - todayTotal);
+    const streak = calcStreak();
+
+    // Ring
+    const color = pct >= 100 ? "#22c55e" : "#4ade80";
+    document.getElementById("ring").style.background =
+      `conic-gradient(${color} ${pct * 3.6}deg, #1e2a1a ${pct * 3.6}deg)`;
+    document.getElementById("ring-count").textContent = todayTotal;
+    document.getElementById("ring-done").style.display = pct >= 100 ? "block" : "none";
+    document.getElementById("ring-caption").textContent =
+      (remaining > 0 ? `${remaining} to go` : "Goal complete!") + ` · ${pct}%`;
+
+    // Sets list
+    const box = document.getElementById("sets-box");
+    const list = document.getElementById("sets-list");
+    if (todaySets.length === 0) {
+      box.style.display = "none";
+    } else {
+      box.style.display = "block";
+      list.innerHTML = [...todaySets].reverse().map(e => `
+        <div class="set-row">
+          <span class="set-count">${e.count} reps</span>
+          <span class="set-time">${new Date(e.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>
+          <button class="del-btn" onclick="deleteEntry(${e.id})">×</button>
+        </div>
+      `).join("");
+    }
+
+    // Footer
+    document.getElementById("days-remaining").innerHTML = `${getDaysRemaining()}<span class="footer-label"> days left</span>`;
+    document.getElementById("streak-footer").innerHTML = `${streak}<span class="footer-label"> day streak</span>`;
+
+    // History
+    const grid = document.getElementById("hist-grid");
+    const days = [];
+    const d = new Date();
+    for (let i = 0; i < 30; i++) {
+      const key = d.toISOString().slice(0, 10);
+      const total = (data[key] || []).reduce((s, r) => s + r.count, 0);
+      days.unshift({ key, total, hit: total >= DAILY_GOAL });
+      d.setDate(d.getDate() - 1);
+    }
+    grid.innerHTML = days.map(day => `
+      <div class="hist-cell ${day.hit ? "hit" : day.total > 0 ? "partial" : ""}" title="${day.key}: ${day.total}">
+        <div class="hist-date">${day.key.slice(5)}</div>
+        <div class="hist-val">${day.total || "–"}</div>
+      </div>
+    `).join("");
+
+    // Streak page
+    document.getElementById("streak-big").textContent = streak;
+    const allEntries = Object.values(data).flat();
+    document.getElementById("stat-total").textContent = allEntries.reduce((s, e) => s + e.count, 0).toLocaleString();
+    document.getElementById("stat-days").textContent = Object.keys(data).filter(k => (data[k]||[]).reduce((s,r)=>s+r.count,0) > 0).length;
+    document.getElementById("stat-goals").textContent = Object.keys(data).filter(k => (data[k]||[]).reduce((s,r)=>s+r.count,0) >= DAILY_GOAL).length;
+    document.getElementById("stat-remain").textContent = getDaysRemaining();
+    document.getElementById("fit-note").textContent = gStatus === "synced"
+      ? "✓ Sets sync automatically to Google Fit as exercise segments."
+      : "Tap 'Sync Google Fit' in the header to connect. Each logged set will sync automatically.";
+  }
+
+  function calcStreak() {
+    let streak = 0;
+    const d = new Date();
+    while (true) {
+      const key = d.toISOString().slice(0, 10);
+      const total = (data[key] || []).reduce((s, r) => s + r.count, 0);
+      if (total >= DAILY_GOAL) { streak++; d.setDate(d.getDate() - 1); } else break;
+    }
+    return streak;
+  }
+
+  // ── Log set ────────────────────────────────────────────────────────────────
+  function logSet() {
+    const input = document.getElementById("rep-input");
+    const count = parseInt(input.value, 10);
+    if (!count || count < 1 || count > 500) { showToast("Enter a number 1–500", "error"); return; }
+    const todayKey = getTodayKey();
+    const now = new Date();
+    const entry = { count, time: now.toISOString(), id: now.getTime() };
+    data[todayKey] = [...(data[todayKey] || []), entry];
+    saveData(data);
+    input.value = "";
+    const newTotal = data[todayKey].reduce((s, r) => s + r.count, 0);
+    const prev = newTotal - count;
+    if (newTotal >= DAILY_GOAL && prev < DAILY_GOAL) {
+      showToast("🎯 Daily goal crushed!", "goal");
+    } else {
+      showToast(`+${count} logged — ${Math.max(0, DAILY_GOAL - newTotal)} left today`);
+    }
+    if (gAuthToken) syncToGoogleFit(count, now, gAuthToken);
+    render();
+  }
+
+  function deleteEntry(id) {
+    const todayKey = getTodayKey();
+    data[todayKey] = (data[todayKey] || []).filter(e => e.id !== id);
+    saveData(data);
+    render();
+  }
+
+  function setQuick(n) {
+    document.getElementById("rep-input").value = n;
+    document.getElementById("rep-input").focus();
+  }
+
+  document.getElementById("rep-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") logSet();
+  });
+
+  // ── Nav ────────────────────────────────────────────────────────────────────
+  function setView(v) {
+    document.querySelectorAll(".view").forEach(el => el.classList.remove("active"));
+    document.querySelectorAll(".nav-btn").forEach(el => el.classList.remove("active"));
+    document.getElementById("view-" + v).classList.add("active");
+    const btns = document.querySelectorAll(".nav-btn");
+    const idx = ["today","history","streak"].indexOf(v);
+    btns[idx].classList.add("active");
+    render();
+  }
+
+  // ── Google Fit OAuth ───────────────────────────────────────────────────────
+  // Check URL hash on load (redirect flow)
+  (function checkHash() {
+    const hash = window.location.hash;
+    if (hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.replace("#", ""));
+      const token = params.get("access_token");
+      if (token) {
+        gAuthToken = token;
+        gStatus = "synced";
+        sessionStorage.setItem("gfit_token", token);
+        updateFitBtn();
+        window.history.replaceState(null, "", window.location.pathname);
+        showToast("Connected to Google Fit ✓");
+      }
+    }
+    const saved = sessionStorage.getItem("gfit_token");
+    if (saved && !gAuthToken) {
+      gAuthToken = saved;
+      gStatus = "synced";
+      updateFitBtn();
+    }
+  })();
+
+  function updateFitBtn() {
+    const btn = document.getElementById("fit-btn");
+    if (gStatus === "synced") {
+      btn.textContent = "✓ Google Fit";
+      btn.classList.add("connected");
+    } else if (gStatus === "connecting") {
+      btn.textContent = "Connecting…";
+      btn.classList.remove("connected");
+    } else {
+      btn.textContent = "Sync Google Fit";
+      btn.classList.remove("connected");
+    }
+  }
+
+  function initGoogleAuth() {
+    const redirectUri = window.location.href.split("#")[0];
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: "token",
+      scope: SCOPES,
+      include_granted_scopes: "true",
+    });
+    const authUrl = "https://accounts.google.com/o/oauth2/v2/auth?" + params;
+    const popup = window.open(authUrl, "googleauth", "width=500,height=650,left=100,top=80");
+    if (!popup || popup.closed) {
+      // Popup blocked — full redirect
+      window.location.href = authUrl;
+      return;
+    }
+    gStatus = "connecting";
+    updateFitBtn();
+    const poll = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(poll);
+        if (gStatus === "connecting") { gStatus = "idle"; updateFitBtn(); }
+        return;
+      }
+      try {
+        const hash = popup.location.hash;
+        if (hash && hash.includes("access_token")) {
+          const p = new URLSearchParams(hash.replace("#", ""));
+          const token = p.get("access_token");
+          if (token) {
+            clearInterval(poll);
+            popup.close();
+            gAuthToken = token;
+            gStatus = "synced";
+            sessionStorage.setItem("gfit_token", token);
+            updateFitBtn();
+            showToast("Connected to Google Fit ✓");
+            render();
+          }
+        }
+      } catch(e) { /* cross-origin, keep polling */ }
+    }, 600);
+  }
+
+  async function syncToGoogleFit(count, time, token) {
+    const startMs = time.getTime();
+    const endMs = startMs + 60000;
+    const dsId = "derived:com.google.activity.exercise:com.google.android.gms:merge_exercise_segments";
+    const body = {
+      minStartTimeNs: String(startMs * 1e6),
+      maxEndTimeNs: String(endMs * 1e6),
+      dataSourceId: dsId,
+      point: [{
+        startTimeNanos: String(startMs * 1e6),
+        endTimeNanos: String(endMs * 1e6),
+        dataTypeName: "com.google.activity.exercise",
+        value: [{ intVal: 34 }, { intVal: count }, { intVal: 0 }],
+      }],
+    };
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/fitness/v1/users/me/dataSources/${encodeURIComponent(dsId)}/datasets/${startMs * 1e6}-${endMs * 1e6}`,
+        { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body) }
+      );
+      if (!res.ok) { console.warn("Fit sync error", res.status); }
+    } catch(e) { console.warn("Fit sync failed", e); }
+  }
+
+  // Initial render
+  render();
+</script>
+</body>
+</html>
